@@ -176,6 +176,11 @@ const nodeFunctions = {
   },
   remove: () => {
     const { point, room } = state.selectedPoint;
+
+    if (room.points.length === 3) {
+      return;
+    }
+
     const pointIdxInRoom = room.points.indexOf(point);
     const pointIdxInPointsSet = points.indexOf(state.selectedPoint);
 
