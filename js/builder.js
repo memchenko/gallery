@@ -45,6 +45,7 @@ const points = state.rooms.reduce((acc, room) => {
 const UNIT_SIZE_PX = 10;
 const POINT_SIZE = 5;
 const POINT_CLICK_AREA = 15;
+const DEFAULT_ROOM_SIZE = UNIT_SIZE_PX * 10;
 
 const theme = {
   vertex: "#b7b2c2",
@@ -76,7 +77,9 @@ window.doubleClicked = function () {
   const rooms = getRoomsInMousePoint();
   const isRoomSelected = state.activeRoom !== null;
 
-  if (!rooms) {
+  if (rooms.length === 0 && !state.activeRoom) {
+    addNewRoom();
+  } else if (rooms.length === 0) {
     state.activeRoom = null;
   } else if (!state.activeRoom) {
     state.activeRoom = rooms[0];
@@ -122,6 +125,25 @@ window.mouseReleased = function () {
   }
 };
 
+function addNewRoom() {
+  const halfW = DEFAULT_ROOM_SIZE / 2;
+  const halfH = DEFAULT_ROOM_SIZE / 2;
+  const { x, y } = getRelativeMousePoint();
+
+  state.rooms.push({
+    isMain: false,
+    title: `Room ${state.rooms.length}`,
+    points: [
+      { x: x - halfW, y: y - halfH },
+      { x: x - halfW, y: y + halfH },
+      { x: x + halfW, y: y + halfH },
+      { x: x + halfW, y: y - halfH },
+    ],
+  });
+
+  state.activeRoom = state.rooms[state.rooms.length - 1];
+}
+
 const roomFunctions = {
   makeMain: () => {
     state.rooms.forEach((room) => {
@@ -153,7 +175,7 @@ function addGuiOnRoomSelected() {
     gui = new dat.GUI();
   }
 
-  roomFolder = gui.addFolder("Комната");
+  roomFolder = gui.addFolder("Меню комнаты");
   roomFolder.add(state.activeRoom, "title").name("Название");
 
   if (!state.activeRoom.isMain) {
