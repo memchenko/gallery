@@ -21,7 +21,10 @@ const state = {
     },
   ],
   activeRoom: null,
-  selectedPoint: null,
+  // { points, room }
+  // room is needed here to check
+  // whether points are from the same room
+  selectedPoints: null,
 };
 const points = state.rooms.reduce((acc, room) => {
   acc.push(...room.points);
@@ -50,6 +53,56 @@ function draw() {
   drawAim();
   translate(width / 2, height / 2);
   drawRooms();
+}
+
+window.doubleClicked = function () {
+  const rooms = getRoomsInMousePoint();
+
+  if (!rooms) {
+    return;
+  } else if (!state.activeRoom) {
+    state.activeRoom = rooms[0];
+  } else {
+    const currIdx = rooms.indexOf(state.activeRoom);
+
+    if (currIdx !== -1) {
+      const nextIdx = (currIdx + 1) % rooms.length;
+
+      state.activeRoom = rooms[nextIdx];
+    } else {
+      state.activeRoom = rooms[0];
+    }
+  }
+};
+
+function getRoomsInMousePoint() {
+  const { x, y } = getRelativeMousePoint();
+
+  return state.rooms.filter(({ points }) => {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let point;
+
+    for (let i = points.length - 1; i >= 0; i--) {
+      point = points[i];
+
+      minX = point.x < minX ? point.x : minX;
+      maxX = point.x > maxX ? point.x : maxX;
+      minY = point.y < minY ? point.y : minY;
+      maxY = point.y > maxY ? point.y : maxY;
+    }
+
+    return minX < x && maxX > x && minY < y && maxY > y;
+  });
+}
+
+function getRelativeMousePoint() {
+  return {
+    x: mouseX - width / 2,
+    y: mouseY - height / 2,
+  };
 }
 
 function drawAim() {
