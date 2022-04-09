@@ -18,6 +18,17 @@ const state = {
         { x: 50, y: -50 },
       ],
       isMain: true,
+      title: "Hall",
+    },
+    {
+      points: [
+        { x: 50, y: 0 },
+        { x: 50, y: 100 },
+        { x: 150, y: 100 },
+        { x: 150, y: 0 },
+      ],
+      isMain: false,
+      title: "Kitchen",
     },
   ],
   activeRoom: null,
@@ -43,6 +54,10 @@ const theme = {
   aim: "#888888",
 };
 
+let gui;
+let roomFolder = null;
+let pointsFolder = null;
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
 }
@@ -57,9 +72,10 @@ function draw() {
 
 window.doubleClicked = function () {
   const rooms = getRoomsInMousePoint();
+  const isRoomSelected = state.activeRoom !== null;
 
   if (!rooms) {
-    return;
+    state.activeRoom = null;
   } else if (!state.activeRoom) {
     state.activeRoom = rooms[0];
   } else {
@@ -73,7 +89,62 @@ window.doubleClicked = function () {
       state.activeRoom = rooms[0];
     }
   }
+
+  if (state.activeRoom) {
+    addGuiOnRoomSelected();
+  } else if (isRoomSelected) {
+    destroyRoomGui();
+    destroyGui();
+  }
 };
+
+const roomFunctions = {
+  makeMain: () => {
+    state.rooms.forEach((room) => {
+      room.isMain = false;
+    });
+    state.activeRoom.isMain = true;
+  },
+  remove: () => {
+    const idx = state.rooms.indexOf(state.activeRoom);
+    const isRoomMain = state.activeRoom.isMain;
+
+    state.activeRoom = null;
+    state.rooms.splice(idx, 1);
+
+    if (isRoomMain && state.rooms.length) {
+      state.rooms[0].isMain = true;
+    }
+
+    destroyRoomGui();
+    destroyGui();
+  },
+};
+function addGuiOnRoomSelected() {
+  if (roomFolder) {
+    destroyRoomGui();
+  }
+
+  if (!gui) {
+    gui = new dat.GUI();
+  }
+
+  roomFolder = gui.addFolder(`Room: ${state.activeRoom.title}`);
+  roomFolder.add(state.activeRoom, "title").name("Название");
+  roomFolder.add(roomFunctions, "makeMain").name("Сделать основной");
+  roomFolder.add(roomFunctions, "remove").name("Удалить");
+  roomFolder.open();
+}
+
+function destroyRoomGui() {
+  gui.removeFolder(roomFolder);
+  roomFolder = null;
+}
+
+function destroyGui() {
+  gui.destroy();
+  gui = null;
+}
 
 function getRoomsInMousePoint() {
   const { x, y } = getRelativeMousePoint();
@@ -196,7 +267,3 @@ function drawRoom(room) {
     drawPoint(point.x, point.y, POINT_SIZE, POINT_SIZE);
   }
 }
-
-function selectPoint() {}
-
-function selectRoom() {}
