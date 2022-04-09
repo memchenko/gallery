@@ -57,7 +57,7 @@ const theme = {
 
 let gui;
 let roomFolder = null;
-let pointsFolder = null;
+let pointFolder = null;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -71,7 +71,7 @@ function draw() {
 }
 
 window.doubleClicked = function () {
-  if (keyIsDown(SHIFT)) {
+  if (keyIsDown(SHIFT) || state.selectedPoint) {
     return;
   }
 
@@ -127,7 +127,9 @@ window.mouseReleased = function () {
 };
 
 window.mouseClicked = function () {
-  if (keyIsDown(SHIFT)) {
+  const currentSelectedPoint = state.selectedPoint;
+
+  if (keyIsDown(SHIFT) && !state.activeRoom) {
     const nodes = getNodes();
     const isNodeSelected = state.selectedPoint;
     const currIdx = nodes.indexOf(state.selectedPoint);
@@ -146,7 +148,68 @@ window.mouseClicked = function () {
   } else {
     state.selectedPoint = null;
   }
+
+  if (state.selectedPoint && state.selectedPoint !== currentSelectedPoint) {
+    addGuiOnNodeSelected();
+  } else if (!state.selectedPoint && currentSelectedPoint) {
+    destroyNodeGui();
+    destroyGui();
+  }
 };
+
+const nodeFunctions = {
+  addNode: () => {
+    const { point, room } = state.selectedPoint;
+    const pointIdx = room.points.indexOf(point);
+    const nextPointIdx = (pointIdx + 1) % room.points.length;
+
+    const avgX = (room.points[pointIdx].x + room.points[nextPointIdx].x) / 2;
+    const avgY = (room.points[pointIdx].y + room.points[nextPointIdx].y) / 2;
+
+    const newPoint = {
+      x: Math.floor(avgX / UNIT_SIZE_PX) * UNIT_SIZE_PX,
+      y: Math.floor(avgY / UNIT_SIZE_PX) * UNIT_SIZE_PX,
+    };
+
+    room.points.splice(nextPointIdx, 0, newPoint);
+    points.push({ room, point: newPoint });
+  },
+  remove: () => {
+    const { point, room } = state.selectedPoint;
+    const pointIdxInRoom = room.points.indexOf(point);
+    const pointIdxInPointsSet = points.indexOf(state.selectedPoint);
+
+    state.selectedPoint = null;
+
+    points.splice(pointIdxInPointsSet, 1);
+    room.points.splice(pointIdxInRoom, 1);
+
+    destroyNodeGui();
+    destroyGui();
+  },
+};
+function addGuiOnNodeSelected() {
+  if (pointFolder) {
+    destroyNodeGui();
+  }
+
+  if (!gui) {
+    gui = new dat.GUI();
+  }
+
+  pointFolder = gui.addFolder(
+    `Угол комнаты "${state.selectedPoint.room.title}"`
+  );
+
+  pointFolder.add(nodeFunctions, "addNode").name("Добавить узел");
+  pointFolder.add(nodeFunctions, "remove").name("Удалить");
+  pointFolder.open();
+}
+
+function destroyNodeGui() {
+  gui.removeFolder(pointFolder);
+  pointFolder = null;
+}
 
 function getNodes() {
   const { x: cx, y: cy } = getRelativeMousePoint();
