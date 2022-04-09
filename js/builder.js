@@ -32,13 +32,11 @@ const state = {
     },
   ],
   activeRoom: null,
-  // { points, room }
-  // room is needed here to check
-  // whether points are from the same room
-  selectedPoints: null,
+  // { point, room }
+  selectedPoint: null,
 };
 const points = state.rooms.reduce((acc, room) => {
-  acc.push(...room.points);
+  acc.push(...room.points.map((point) => ({ room, point })));
   return acc;
 }, []);
 
@@ -68,12 +66,15 @@ function setup() {
 function draw() {
   clear();
   drawGrid();
-  drawAim();
   translate(width / 2, height / 2);
   drawRooms();
 }
 
 window.doubleClicked = function () {
+  if (keyIsDown(SHIFT)) {
+    return;
+  }
+
   const rooms = getRoomsInMousePoint();
   const isRoomSelected = state.activeRoom !== null;
 
@@ -125,23 +126,62 @@ window.mouseReleased = function () {
   }
 };
 
+window.mouseClicked = function () {
+  if (keyIsDown(SHIFT)) {
+    const nodes = getNodes();
+    const isNodeSelected = state.selectedPoint;
+    const currIdx = nodes.indexOf(state.selectedPoint);
+
+    if (!isNodeSelected) {
+      state.selectedPoint = nodes[0];
+    } else if (currIdx !== -1 && nodes.length > 1) {
+      const nextIdx = (currIdx + 1) % nodes.length;
+
+      state.selectedPoint = nodes[nextIdx];
+    } else if (nodes.length > 0) {
+      state.selectedPoint = nodes[0];
+    } else {
+      state.selectedPoint = null;
+    }
+  } else {
+    state.selectedPoint = null;
+  }
+};
+
+function getNodes() {
+  const { x: cx, y: cy } = getRelativeMousePoint();
+
+  return points.filter(({ point: p }) => {
+    const minX = cx - POINT_CLICK_AREA;
+    const maxX = cx + POINT_CLICK_AREA;
+    const minY = cy - POINT_CLICK_AREA;
+    const maxY = cy + POINT_CLICK_AREA;
+
+    return minX < p.x && maxX > p.x && minY < p.y && maxY > p.y;
+  });
+}
+
 function addNewRoom() {
   const halfW = DEFAULT_ROOM_SIZE / 2;
   const halfH = DEFAULT_ROOM_SIZE / 2;
   const { x, y } = getRelativeMousePoint();
+  const roomPoints = [
+    { x: x - halfW, y: y - halfH },
+    { x: x - halfW, y: y + halfH },
+    { x: x + halfW, y: y + halfH },
+    { x: x + halfW, y: y - halfH },
+  ];
 
   state.rooms.push({
     isMain: false,
     title: `Room ${state.rooms.length}`,
-    points: [
-      { x: x - halfW, y: y - halfH },
-      { x: x - halfW, y: y + halfH },
-      { x: x + halfW, y: y + halfH },
-      { x: x + halfW, y: y - halfH },
-    ],
+    points: roomPoints,
   });
-
   state.activeRoom = state.rooms[state.rooms.length - 1];
+
+  points.push(
+    ...roomPoints.map((point) => ({ point, room: state.activeRoom }))
+  );
 }
 
 const roomFunctions = {
@@ -318,9 +358,15 @@ function drawRoom(room) {
   for (let i = points.length - 1; i >= 0; i--) {
     point = points[i];
     pointSize =
-      selectedPoint === point || isActive ? POINT_SIZE * 2 : POINT_SIZE;
+      (selectedPoint && selectedPoint.point === point) || isActive
+        ? POINT_SIZE * 2
+        : POINT_SIZE;
 
-    fill(selectedPoint === point ? theme.selectedVertex : theme.vertex);
+    fill(
+      (selectedPoint && selectedPoint.point) === point
+        ? theme.selectedVertex
+        : theme.vertex
+    );
     drawPoint(point.x, point.y, pointSize, pointSize);
   }
 }
