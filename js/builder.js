@@ -51,6 +51,8 @@ const theme = {
   selectedVertex: "#a391c9",
   room: "#ebf5d5",
   selectedRoom: "#cde892",
+  mainRoom: "#F8EEC8",
+  selectedMainRoom: "#F2D66F",
   aim: "#888888",
 };
 
@@ -131,7 +133,10 @@ function addGuiOnRoomSelected() {
 
   roomFolder = gui.addFolder(`Room: ${state.activeRoom.title}`);
   roomFolder.add(state.activeRoom, "title").name("Название");
-  roomFolder.add(roomFunctions, "makeMain").name("Сделать основной");
+
+  if (!state.activeRoom.isMain) {
+    roomFolder.add(roomFunctions, "makeMain").name("Сделать основной");
+  }
   roomFolder.add(roomFunctions, "remove").name("Удалить");
   roomFolder.open();
 }
@@ -244,9 +249,18 @@ function drawRoom(room) {
   const { activeRoom, selectedPoint } = state;
   let point;
 
+  const isActive = activeRoom === room;
+  const shapeColor = isMain
+    ? isActive
+      ? theme.selectedMainRoom
+      : theme.mainRoom
+    : isActive
+    ? theme.selectedRoom
+    : theme.room;
+
   strokeWeight(1.5);
   stroke(theme.vertex);
-  fill(activeRoom === room ? theme.selectedRoom : theme.room);
+  fill(shapeColor);
 
   beginShape();
   for (let i = points.length - 1; i >= 0; i--) {
@@ -262,8 +276,10 @@ function drawRoom(room) {
   rectMode(CENTER);
   for (let i = points.length - 1; i >= 0; i--) {
     point = points[i];
+    pointSize =
+      selectedPoint === point || isActive ? POINT_SIZE * 2 : POINT_SIZE;
 
     fill(selectedPoint === point ? theme.selectedVertex : theme.vertex);
-    drawPoint(point.x, point.y, POINT_SIZE, POINT_SIZE);
+    drawPoint(point.x, point.y, pointSize, pointSize);
   }
 }
