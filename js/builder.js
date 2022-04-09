@@ -100,6 +100,28 @@ window.doubleClicked = function () {
   }
 };
 
+window.mouseDragged = function () {
+  if (state.activeRoom) {
+    for (let i = state.activeRoom.points.length - 1; i >= 0; i--) {
+      const point = state.activeRoom.points[i];
+
+      point.x += mouseX - pmouseX;
+      point.y += mouseY - pmouseY;
+    }
+  }
+};
+
+window.mouseReleased = function () {
+  if (state.activeRoom) {
+    for (let i = state.activeRoom.points.length - 1; i >= 0; i--) {
+      const point = state.activeRoom.points[i];
+
+      point.x = Math.floor(point.x / UNIT_SIZE_PX) * UNIT_SIZE_PX;
+      point.y = Math.floor(point.y / UNIT_SIZE_PX) * UNIT_SIZE_PX;
+    }
+  }
+};
+
 const roomFunctions = {
   makeMain: () => {
     state.rooms.forEach((room) => {
@@ -131,7 +153,7 @@ function addGuiOnRoomSelected() {
     gui = new dat.GUI();
   }
 
-  roomFolder = gui.addFolder(`Room: ${state.activeRoom.title}`);
+  roomFolder = gui.addFolder("Комната");
   roomFolder.add(state.activeRoom, "title").name("Название");
 
   if (!state.activeRoom.isMain) {
