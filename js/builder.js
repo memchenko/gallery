@@ -236,16 +236,13 @@ function drawAim() {
 }
 
 function getSnap() {
-  const halfW = width / 2;
-  const halfH = height / 2;
-  const diffX = halfW - mouseX;
-  const diffY = halfH - mouseY;
+  const { x: diffX, y: diffY } = getRelativeMousePoint();
   const x = Math.ceil(Math.abs(diffX) / UNIT_SIZE_PX) * UNIT_SIZE_PX;
   const y = Math.ceil(Math.abs(diffY) / UNIT_SIZE_PX) * UNIT_SIZE_PX;
 
   return {
-    x: halfW - Math.sign(diffX) * x,
-    y: halfH - Math.sign(diffY) * y,
+    x: width / 2 - Math.sign(-diffX) * x,
+    y: height / 2 - Math.sign(-diffY) * y,
   };
 }
 
