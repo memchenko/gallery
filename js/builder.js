@@ -9,9 +9,9 @@ const state = {
     isMain: boolean;
     title: string;
     // p is node index which is associated with an exit (clockwise)
-    // factor is a percent from 1st point to 2nd where exit is
-    // size is factor as well
-    exits: { p: number; factor: number; size: number }[];
+    // position is a percent from 1st point to 2nd where exit is
+    // size is position as well
+    exits: { p: number; position: number; size: number }[];
   }
   */
   rooms: [
@@ -24,7 +24,7 @@ const state = {
       ],
       isMain: true,
       title: "Hall",
-      exits: [{ p: 3, factor: 0.3, size: 0.2 }],
+      exits: [{ p: 3, position: 0.3, size: 0.2 }],
     },
     {
       points: [
@@ -65,6 +65,7 @@ const theme = {
 let gui;
 let roomFolder = null;
 let pointFolder = null;
+let exitsFolder = null;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -78,7 +79,14 @@ function draw() {
 }
 
 window.doubleClicked = function () {
-  if (keyIsDown(SHIFT) || state.selectedPoint) {
+  if (keyIsDown(SHIFT)) {
+    return;
+  }
+
+  if (state.selectedPoint) {
+    state.selectedPoint = null;
+    destroyExitsGui();
+    destroyGui();
     return;
   }
 
@@ -111,8 +119,22 @@ window.doubleClicked = function () {
   }
 };
 
+const nodeDraggingState = {
+  isDragging: false,
+};
+const roomDraggingState = {
+  isDragging: false,
+};
 window.mouseDragged = function () {
-  if (state.activeRoom) {
+  if (
+    !roomDraggingState.isDragging &&
+    state.activeRoom &&
+    doesMousePointBelongToRoom(state.activeRoom.points)
+  ) {
+    roomDraggingState.isDragging = true;
+  }
+
+  if (roomDraggingState.isDragging) {
     for (let i = state.activeRoom.points.length - 1; i >= 0; i--) {
       const point = state.activeRoom.points[i];
 
@@ -121,7 +143,15 @@ window.mouseDragged = function () {
     }
   }
 
-  if (state.selectedPoint) {
+  if (
+    !nodeDraggingState.isDragging &&
+    state.selectedPoint &&
+    doesMousePointBelongToNode(state.selectedPoint.point)
+  ) {
+    nodeDraggingState.isDragging = true;
+  }
+
+  if (nodeDraggingState.isDragging) {
     state.selectedPoint.point.x += mouseX - pmouseX;
     state.selectedPoint.point.y += mouseY - pmouseY;
   }
@@ -135,6 +165,8 @@ window.mouseReleased = function () {
       point.x = roundUpTo(point.x, UNIT_SIZE_PX);
       point.y = roundUpTo(point.y, UNIT_SIZE_PX);
     }
+
+    roomDraggingState.isDragging = false;
   }
 
   if (state.selectedPoint) {
@@ -142,6 +174,8 @@ window.mouseReleased = function () {
 
     point.x = roundUpTo(point.x, UNIT_SIZE_PX);
     point.y = roundUpTo(point.y, UNIT_SIZE_PX);
+
+    nodeDraggingState.isDragging = false;
   }
 };
 
@@ -164,8 +198,6 @@ window.mouseClicked = function () {
     } else {
       state.selectedPoint = null;
     }
-  } else {
-    state.selectedPoint = null;
   }
 
   if (state.selectedPoint && state.selectedPoint !== currentSelectedPoint) {
@@ -240,6 +272,18 @@ const nodeFunctions = {
     destroyNodeGui();
     destroyGui();
   },
+  addExit: () => {
+    const { point, room } = state.selectedPoint;
+
+    room.exits.push({
+      p: room.points.indexOf(point),
+      position: 0.5,
+      size: 0.2,
+    });
+
+    destroyExitsGui();
+    addExitsGui();
+  },
 };
 function addGuiOnNodeSelected() {
   if (pointFolder) {
@@ -255,8 +299,57 @@ function addGuiOnNodeSelected() {
   );
 
   pointFolder.add(nodeFunctions, "addNode").name("Добавить узел");
+  pointFolder.add(nodeFunctions, "addExit").name("Добавить выход");
   pointFolder.add(nodeFunctions, "remove").name("Удалить");
+
   pointFolder.open();
+
+  addExitsGui();
+}
+
+function addExitsGui() {
+  if (exitsFolder) {
+    destroyExitsGui();
+  }
+
+  exitsFolder = gui.addFolder("Выходы");
+
+  const idxOfSelectedPoint = state.selectedPoint.room.points.indexOf(
+    state.selectedPoint.point
+  );
+  const pointRelatedExits = state.selectedPoint.room.exits.filter(({ p }) => {
+    return p === idxOfSelectedPoint;
+  });
+
+  pointRelatedExits.forEach((exit, idx) => {
+    if (exit.p === idxOfSelectedPoint) {
+      const position = exitsFolder
+        .add(exit, "position", 0, 1, 0.001)
+        .name(`Положение ${idx + 1}`);
+      const size = exitsFolder
+        .add(exit, "size", 0, 1, 0.001)
+        .name(`Размер ${idx + 1}`);
+      const removal = exitsFolder
+        .add({ remove: () => {} }, "remove")
+        .name("Удалить выход")
+        .onChange(() => {
+          position.remove();
+          size.remove();
+          removal.remove();
+          state.selectedPoint.room.exits.splice(
+            state.selectedPoint.room.exits.indexOf(exit),
+            1
+          );
+        });
+    }
+  });
+
+  exitsFolder.open();
+}
+
+function destroyExitsGui() {
+  gui.removeFolder(exitsFolder);
+  exitsFolder = null;
 }
 
 function destroyNodeGui() {
@@ -265,16 +358,20 @@ function destroyNodeGui() {
 }
 
 function getNodesInMousePoint() {
+  return points.filter(({ point: p }) => {
+    return doesMousePointBelongToNode(p);
+  });
+}
+
+function doesMousePointBelongToNode(p) {
   const { x: cx, y: cy } = getRelativeMousePoint();
 
-  return points.filter(({ point: p }) => {
-    const minX = cx - POINT_CLICK_AREA;
-    const maxX = cx + POINT_CLICK_AREA;
-    const minY = cy - POINT_CLICK_AREA;
-    const maxY = cy + POINT_CLICK_AREA;
+  const minX = cx - POINT_CLICK_AREA;
+  const maxX = cx + POINT_CLICK_AREA;
+  const minY = cy - POINT_CLICK_AREA;
+  const maxY = cy + POINT_CLICK_AREA;
 
-    return minX < p.x && maxX > p.x && minY < p.y && maxY > p.y;
-  });
+  return minX < p.x && maxX > p.x && minY < p.y && maxY > p.y;
 }
 
 function addNewRoom() {
@@ -353,26 +450,29 @@ function destroyGui() {
 }
 
 function getRoomsInMousePoint() {
-  const { x, y } = getRelativeMousePoint();
-
   return state.rooms.filter(({ points }) => {
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    let point;
-
-    for (let i = points.length - 1; i >= 0; i--) {
-      point = points[i];
-
-      minX = point.x < minX ? point.x : minX;
-      maxX = point.x > maxX ? point.x : maxX;
-      minY = point.y < minY ? point.y : minY;
-      maxY = point.y > maxY ? point.y : maxY;
-    }
-
-    return minX < x && maxX > x && minY < y && maxY > y;
+    return doesMousePointBelongToRoom(points);
   });
+}
+
+function doesMousePointBelongToRoom(points) {
+  const { x, y } = getRelativeMousePoint();
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let point;
+
+  for (let i = points.length - 1; i >= 0; i--) {
+    point = points[i];
+
+    minX = point.x < minX ? point.x : minX;
+    maxX = point.x > maxX ? point.x : maxX;
+    minY = point.y < minY ? point.y : minY;
+    maxY = point.y > maxY ? point.y : maxY;
+  }
+
+  return minX < x && maxX > x && minY < y && maxY > y;
 }
 
 function getRelativeMousePoint() {
@@ -476,8 +576,8 @@ function drawRoom(room) {
     exit = exits[i];
     const p1 = points[exit.p];
     const p2 = points[getNextCycledNumber(exit.p, points.length)];
-    const cx = lerp(p1.x, p2.x, exit.factor);
-    const cy = lerp(p1.y, p2.y, exit.factor);
+    const cx = lerp(p1.x, p2.x, exit.position);
+    const cy = lerp(p1.y, p2.y, exit.position);
     const xsize = abs(p1.x - p2.x) * exit.size;
     const ysize = abs(p1.y - p2.y) * exit.size;
     const minx = cx - (Math.sign(p1.x - p2.x) * xsize) / 2;
