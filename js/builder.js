@@ -184,10 +184,19 @@ function getExitsCurrentState(room) {
 }
 
 function relinkExits(room, previousExitsState) {
-  room.exits = previousExitsState.map(({ p, ...rest }) => ({
-    ...rest,
-    p: room.points.indexOf(p),
-  }));
+  room.exits = previousExitsState.map(({ p, ...rest }) => {
+    let newIdx = room.points.indexOf(p);
+
+    // in case an exit was linked to the last point
+    if (newIdx === -1) {
+      newIdx = room.points.length - 1;
+    }
+
+    return {
+      ...rest,
+      p: newIdx,
+    };
+  });
 }
 
 const nodeFunctions = {
@@ -212,6 +221,7 @@ const nodeFunctions = {
   },
   remove: () => {
     const { point, room } = state.selectedPoint;
+    const currentExitsState = getExitsCurrentState(room);
 
     if (room.points.length === 3) {
       return;
@@ -224,6 +234,8 @@ const nodeFunctions = {
 
     points.splice(pointIdxInPointsSet, 1);
     room.points.splice(pointIdxInRoom, 1);
+
+    relinkExits(room, currentExitsState);
 
     destroyNodeGui();
     destroyGui();
@@ -468,10 +480,10 @@ function drawRoom(room) {
     const cy = lerp(p1.y, p2.y, exit.factor);
     const xsize = abs(p1.x - p2.x) * exit.size;
     const ysize = abs(p1.y - p2.y) * exit.size;
-    const minx = cx - xsize / 2;
-    const maxx = cx + xsize / 2;
-    const miny = cy - ysize / 2;
-    const maxy = cy + ysize / 2;
+    const minx = cx - (Math.sign(p1.x - p2.x) * xsize) / 2;
+    const maxx = cx + (Math.sign(p1.x - p2.x) * xsize) / 2;
+    const miny = cy - (Math.sign(p1.y - p2.y) * ysize) / 2;
+    const maxy = cy + (Math.sign(p1.y - p2.y) * ysize) / 2;
 
     line(minx, miny, maxx, maxy);
   }
