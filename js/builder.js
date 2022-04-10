@@ -7,6 +7,11 @@ const state = {
     // x and y are relative to world center
     points: { x: number; y: number; }[];
     isMain: boolean;
+    title: string;
+    // p1 and p2 are points indexes
+    // factor is a percent from 1st point to 2nd where exit is
+    // size is factor as well
+    exits: { p1: number; p2: number; factor: number; size: number }[];
   }
   */
   rooms: [
@@ -19,6 +24,7 @@ const state = {
       ],
       isMain: true,
       title: "Hall",
+      exits: [{ p1: 1, p2: 2, factor: 0.3, size: 0.2 }],
     },
     {
       points: [
@@ -29,6 +35,7 @@ const state = {
       ],
       isMain: false,
       title: "Kitchen",
+      exits: [],
     },
   ],
   activeRoom: null,
@@ -389,7 +396,7 @@ function drawRooms() {
 }
 
 function drawRoom(room) {
-  const { points, isMain } = room;
+  const { points, isMain, exits } = room;
   const { activeRoom, selectedPoint } = state;
   let point;
 
@@ -431,5 +438,23 @@ function drawRoom(room) {
         : theme.vertex
     );
     drawPoint(point.x, point.y, pointSize, pointSize);
+  }
+
+  strokeWeight(4);
+  stroke(isActive ? theme.selectedVertex : theme.vertex);
+  for (let i = exits.length - 1; i >= 0; i--) {
+    exit = exits[i];
+    const p1 = points[exit.p1];
+    const p2 = points[exit.p2];
+    const cx = lerp(p1.x, p2.x, exit.factor);
+    const cy = lerp(p1.y, p2.y, exit.factor);
+    const xsize = abs(p1.x - p2.x) * exit.size;
+    const ysize = abs(p1.y - p2.y) * exit.size;
+    const minx = cx - xsize / 2;
+    const maxx = cx + xsize / 2;
+    const miny = cy - ysize / 2;
+    const maxy = cy + ysize / 2;
+
+    line(minx, miny, maxx, maxy);
   }
 }
