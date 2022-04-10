@@ -113,6 +113,11 @@ window.mouseDragged = function () {
       point.y += mouseY - pmouseY;
     }
   }
+
+  if (state.selectedPoint) {
+    state.selectedPoint.point.x += mouseX - pmouseX;
+    state.selectedPoint.point.y += mouseY - pmouseY;
+  }
 };
 
 window.mouseReleased = function () {
@@ -123,6 +128,13 @@ window.mouseReleased = function () {
       point.x = Math.floor(point.x / UNIT_SIZE_PX) * UNIT_SIZE_PX;
       point.y = Math.floor(point.y / UNIT_SIZE_PX) * UNIT_SIZE_PX;
     }
+  }
+
+  if (state.selectedPoint) {
+    const { point } = state.selectedPoint;
+
+    point.x = Math.floor(point.x / UNIT_SIZE_PX) * UNIT_SIZE_PX;
+    point.y = Math.floor(point.y / UNIT_SIZE_PX) * UNIT_SIZE_PX;
   }
 };
 
