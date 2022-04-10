@@ -8,10 +8,10 @@ const state = {
     points: { x: number; y: number; }[];
     isMain: boolean;
     title: string;
-    // p1 and p2 are points indexes
+    // p is node index which is associated with an exit (clockwise)
     // factor is a percent from 1st point to 2nd where exit is
     // size is factor as well
-    exits: { p1: number; p2: number; factor: number; size: number }[];
+    exits: { p: number; factor: number; size: number }[];
   }
   */
   rooms: [
@@ -24,7 +24,7 @@ const state = {
       ],
       isMain: true,
       title: "Hall",
-      exits: [{ p1: 1, p2: 2, factor: 0.3, size: 0.2 }],
+      exits: [{ p: 3, factor: 0.3, size: 0.2 }],
     },
     {
       points: [
@@ -95,7 +95,7 @@ window.doubleClicked = function () {
     const currIdx = rooms.indexOf(state.activeRoom);
 
     if (currIdx !== -1) {
-      const nextIdx = (currIdx + 1) % rooms.length;
+      const nextIdx = getNextCycledNumber(currIdx, rooms.length);
 
       state.activeRoom = rooms[nextIdx];
     } else {
@@ -149,14 +149,14 @@ window.mouseClicked = function () {
   const currentSelectedPoint = state.selectedPoint;
 
   if (keyIsDown(SHIFT) && !state.activeRoom) {
-    const nodes = getNodes();
+    const nodes = getNodesInMousePoint();
     const isNodeSelected = state.selectedPoint;
     const currIdx = nodes.indexOf(state.selectedPoint);
 
     if (!isNodeSelected) {
       state.selectedPoint = nodes[0];
     } else if (currIdx !== -1 && nodes.length > 1) {
-      const nextIdx = (currIdx + 1) % nodes.length;
+      const nextIdx = getNextCycledNumber(currIdx, nodes.length);
 
       state.selectedPoint = nodes[nextIdx];
     } else if (nodes.length > 0) {
@@ -176,11 +176,26 @@ window.mouseClicked = function () {
   }
 };
 
+function getExitsCurrentState(room) {
+  return room.exits.map(({ p, ...rest }) => ({
+    ...rest,
+    p: room.points[p],
+  }));
+}
+
+function relinkExits(room, previousExitsState) {
+  room.exits = previousExitsState.map(({ p, ...rest }) => ({
+    ...rest,
+    p: room.points.indexOf(p),
+  }));
+}
+
 const nodeFunctions = {
   addNode: () => {
     const { point, room } = state.selectedPoint;
+    const currentExitsState = getExitsCurrentState(room);
     const pointIdx = room.points.indexOf(point);
-    const nextPointIdx = (pointIdx + 1) % room.points.length;
+    const nextPointIdx = getNextCycledNumber(pointIdx, room.points.length);
 
     const avgX = (room.points[pointIdx].x + room.points[nextPointIdx].x) / 2;
     const avgY = (room.points[pointIdx].y + room.points[nextPointIdx].y) / 2;
@@ -192,6 +207,8 @@ const nodeFunctions = {
 
     room.points.splice(nextPointIdx, 0, newPoint);
     points.push({ room, point: newPoint });
+
+    relinkExits(room, currentExitsState);
   },
   remove: () => {
     const { point, room } = state.selectedPoint;
@@ -235,7 +252,7 @@ function destroyNodeGui() {
   pointFolder = null;
 }
 
-function getNodes() {
+function getNodesInMousePoint() {
   const { x: cx, y: cy } = getRelativeMousePoint();
 
   return points.filter(({ point: p }) => {
@@ -263,6 +280,7 @@ function addNewRoom() {
     isMain: false,
     title: `Room ${state.rooms.length}`,
     points: roomPoints,
+    exits: [],
   });
   state.activeRoom = state.rooms[state.rooms.length - 1];
 
@@ -444,8 +462,8 @@ function drawRoom(room) {
   stroke(isActive ? theme.selectedVertex : theme.vertex);
   for (let i = exits.length - 1; i >= 0; i--) {
     exit = exits[i];
-    const p1 = points[exit.p1];
-    const p2 = points[exit.p2];
+    const p1 = points[exit.p];
+    const p2 = points[getNextCycledNumber(exit.p, points.length)];
     const cx = lerp(p1.x, p2.x, exit.factor);
     const cy = lerp(p1.y, p2.y, exit.factor);
     const xsize = abs(p1.x - p2.x) * exit.size;
@@ -457,4 +475,8 @@ function drawRoom(room) {
 
     line(minx, miny, maxx, maxy);
   }
+}
+
+function getNextCycledNumber(current, totalSize) {
+  return (current + 1) % totalSize;
 }
