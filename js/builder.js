@@ -125,16 +125,16 @@ window.mouseReleased = function () {
     for (let i = state.activeRoom.points.length - 1; i >= 0; i--) {
       const point = state.activeRoom.points[i];
 
-      point.x = Math.floor(point.x / UNIT_SIZE_PX) * UNIT_SIZE_PX;
-      point.y = Math.floor(point.y / UNIT_SIZE_PX) * UNIT_SIZE_PX;
+      point.x = roundUpTo(point.x, UNIT_SIZE_PX);
+      point.y = roundUpTo(point.y, UNIT_SIZE_PX);
     }
   }
 
   if (state.selectedPoint) {
     const { point } = state.selectedPoint;
 
-    point.x = Math.floor(point.x / UNIT_SIZE_PX) * UNIT_SIZE_PX;
-    point.y = Math.floor(point.y / UNIT_SIZE_PX) * UNIT_SIZE_PX;
+    point.x = roundUpTo(point.x, UNIT_SIZE_PX);
+    point.y = roundUpTo(point.y, UNIT_SIZE_PX);
   }
 };
 
@@ -179,8 +179,8 @@ const nodeFunctions = {
     const avgY = (room.points[pointIdx].y + room.points[nextPointIdx].y) / 2;
 
     const newPoint = {
-      x: Math.floor(avgX / UNIT_SIZE_PX) * UNIT_SIZE_PX,
-      y: Math.floor(avgY / UNIT_SIZE_PX) * UNIT_SIZE_PX,
+      x: roundUpTo(avgX, UNIT_SIZE_PX),
+      y: roundUpTo(avgY, UNIT_SIZE_PX),
     };
 
     room.points.splice(nextPointIdx, 0, newPoint);
@@ -345,25 +345,8 @@ function getRelativeMousePoint() {
   };
 }
 
-function drawAim() {
-  const { x, y } = getSnap();
-
-  noFill();
-  stroke(theme.aim);
-  strokeWeight(0.5);
-  ellipseMode(CENTER);
-  ellipse(x, y, UNIT_SIZE_PX, UNIT_SIZE_PX);
-}
-
-function getSnap() {
-  const { x: diffX, y: diffY } = getRelativeMousePoint();
-  const x = Math.ceil(Math.abs(diffX) / UNIT_SIZE_PX) * UNIT_SIZE_PX;
-  const y = Math.ceil(Math.abs(diffY) / UNIT_SIZE_PX) * UNIT_SIZE_PX;
-
-  return {
-    x: width / 2 - Math.sign(-diffX) * x,
-    y: height / 2 - Math.sign(-diffY) * y,
-  };
+function roundUpTo(num, divider) {
+  return Math.floor(num / divider) * divider;
 }
 
 function drawGrid() {
